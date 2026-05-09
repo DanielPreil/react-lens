@@ -1,0 +1,78 @@
+{
+  "name": "react-lens",
+  "version": "0.1.0",
+  "description": "A lightweight static advisor for modern React applications.",
+  "author": "Daniel Preil",
+  "packageManager": "pnpm@10.10.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "react-lens": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/preildaniel/react-lens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/preildaniel/react-lens/issues"
+  },
+  "homepage": "https://github.com/preildaniel/react-lens#readme",
+  "scripts": {
+    "build": "tsup src/cli.ts src/index.ts --format esm --dts --clean",
+    "dev": "tsx src/cli.ts",
+    "scan": "node dist/cli.js .",
+    "scan:hu": "node dist/cli.js . --lang hu",
+    "scan:tui": "node dist/cli.js . --interactive",
+    "scan:tui:paper": "node dist/cli.js . --interactive --theme paper",
+    "scan:tui:amber": "node dist/cli.js . --interactive --theme amber",
+    "scan:tui:hu": "node dist/cli.js . --interactive --lang hu",
+    "scan:ci": "node dist/cli.js . --ci --min-severity warning",
+    "scan:sarif": "node dist/cli.js . --format sarif > react-lens.sarif",
+    "test": "vitest run",
+    "check": "pnpm run build && pnpm run test",
+    "prepublishOnly": "pnpm run check"
+  },
+  "keywords": [
+    "react",
+    "lint",
+    "static-analysis",
+    "architecture",
+    "performance"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@typescript-eslint/parser": "^8.59.2",
+    "@typescript-eslint/typescript-estree": "^8.59.2",
+    "commander": "^12.1.0",
+    "eslint": "^10.3.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1",
+    "typescript": "^5.8.3",
+    "zod": "^3.25.36"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.4",
+    "vitest": "^2.1.9"
+  }
+}

@@ -1,0 +1,13 @@
+export { loadConfig } from "./config/loadConfig.js";
+export { findFiles } from "./scanner/findFiles.js";
+export { runAnalysis, applyMinSeverity } from "./scanner/runAnalysis.js";
+export { formatPretty } from "./formatters/pretty.js";
+export { runInteractiveReport } from "./formatters/interactive.js";
+export { formatJson } from "./formatters/json.js";
+export { formatSarif } from "./formatters/sarif.js";
+export { buildCoverageBacklog, buildDocsCoverageMatrix } from "./docs/coverageMatrix.js";
+export { evaluatePerfBudget } from "./perf/budget.js";
+export { ui, labelSeverity, ruleGuides } from "./i18n/messages.js";
+export type { Finding, Severity, RuleId } from "./types/findings.js";
+export type { PerfBaseline } from "./perf/budget.js";
+export type { Lang } from "./i18n/messages.js";
