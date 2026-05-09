@@ -93,7 +93,7 @@ const EXTERNAL_SIGNAL_RE =
   /\b(fetch|addEventListener|removeEventListener|setInterval|setTimeout|subscribe|observe|postMessage|dispatchEvent|WebSocket|MutationObserver|IntersectionObserver|ResizeObserver)\b/;
 
 const ACTION_SIGNAL_RE =
-  /\b(toast|navigate|router\.|push\(|replace\(|redirect\(|mutate\(|submit\(|send\(|trigger\(|dispatch\(|emit\()\b/;
+  /\b(?:toast|navigate|router\.|push|replace|redirect|mutate|submit|send|trigger|dispatch|emit)\s*\(/;
 
 export const effectEventFlagAstRule: Rule = {
   id: "effect-event-flag",
