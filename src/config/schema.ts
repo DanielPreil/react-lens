@@ -20,12 +20,13 @@ export const configSchema = z.object({
       "useless-memo": ruleLevel.default("info"),
       "unstable-memo-deps": ruleLevel.default("warning"),
       "rsc-client-boundary": ruleLevel.default("warning"),
+      "key-index-risk": ruleLevel.default("warning"),
       "server-function-contract": ruleLevel.default("error"),
       "server-function-untrusted-input": ruleLevel.default("warning"),
       "serializable-props-across-boundary": ruleLevel.default("warning"),
       "hydration-root-mismatch-risk": ruleLevel.default("warning"),
       "dangerous-html-xss-risk": ruleLevel.default("error"),
-      "client-env-secrets-risk": ruleLevel.default("error")
+      "client-env-secrets-risk": ruleLevel.default("error"),
     })
-    .default({})
+    .default({}),
 });

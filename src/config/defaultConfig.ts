@@ -27,11 +27,12 @@ export const defaultConfig: ReactLensConfig = {
     "useless-memo": "info",
     "unstable-memo-deps": "warning",
     "rsc-client-boundary": "warning",
+    "key-index-risk": "warning",
     "server-function-contract": "error",
     "server-function-untrusted-input": "warning",
     "serializable-props-across-boundary": "warning",
     "hydration-root-mismatch-risk": "warning",
     "dangerous-html-xss-risk": "error",
-    "client-env-secrets-risk": "error"
-  }
+    "client-env-secrets-risk": "error",
+  },
 };
