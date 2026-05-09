@@ -1,101 +1,123 @@
 # react-lens
 
-A lightweight static advisor for modern React applications.
+[Magyar README](./README.hu.md)
 
-React Lens scans your codebase and explains suspicious React patterns before they become bugs or performance issues.
+A lightweight, fast static advisor for modern React projects.
 
-## Why not just DevTools/React Scan/ESLint?
+React Lens scans React, TypeScript and JavaScript files and reports suspicious patterns that are not always syntax errors, but may later cause performance, maintainability or safety problems.
 
-- React DevTools and React Scan are runtime tools.
-- ESLint focuses on rule correctness.
-- React Lens focuses on architecture and decision-quality smells with explainable guidance.
+It is not an ESLint replacement. It is an additional developer tool that gives explainable suggestions for React architecture and best-practice issues.
 
-## Positioning
+## What is it for?
 
-DevTools shows what is slow. React Lens helps explain why the code structure got there and what to change early in PR/CI.
+In React, many problems are not immediately visible. The code works, but later it may:
 
-## Rules
+- cause unnecessary re-renders,
+- create stale state issues,
+- become harder to understand,
+- cause broken UI behavior when lists are reordered,
+- or hide security risks.
 
-- effect-derived-state
-- effect-event-flag
-- async-effect-race
-- missing-effect-cleanup
-- unstable-context-value
-- inline-prop-to-memo
-- useless-memo
-- unstable-memo-deps
-- rsc-client-boundary
-- server-function-contract
-- server-function-untrusted-input
-- serializable-props-across-boundary
-- hydration-root-mismatch-risk
-- dangerous-html-xss-risk
-- client-env-secrets-risk
+React Lens tries to warn about these issues early during local development, pull requests or CI runs.
 
-Official baseline integration:
-
-- `eslint-plugin-react-hooks` recommended rules are ingested as `react-hooks/<ruleName>` findings.
-
-## Usage
+## Quick start
 
 ```bash
-pnpm install
-pnpm exec tsc --noEmit
-pnpm run build
-pnpm run scan
-pnpm run scan:hu
-pnpm run scan:tui
-pnpm run scan:tui:paper
-pnpm run scan:tui:amber
-pnpm run scan:tui:hu
-pnpm run scan:ci
-pnpm run scan:sarif
-node dist/cli.js . --lang hu
-node dist/cli.js . --interactive --lang hu
-node dist/cli.js . --interactive --theme noir
-node dist/cli.js . --coverage-matrix
-node dist/cli.js . --max-runtime-ms 2000
-node dist/cli.js . --perf-baseline-file .react-lens-perf.json --update-perf-baseline
-node dist/cli.js . --perf-baseline-file .react-lens-perf.json --max-runtime-growth-percent 30
+npx react-lens .
 ```
 
-`npm` also works if you prefer:
+With pnpm:
 
 ```bash
-npm install
-npm run build
+pnpm dlx react-lens .
 ```
 
-## Testing
+Hungarian output:
 
 ```bash
-pnpm run test
+pnpm dlx react-lens . --lang hu
 ```
 
-## Try on your project
+CI mode:
 
 ```bash
-pnpm run build
-node /ABSOLUTE/PATH/TO/react-lens/dist/cli.js /ABSOLUTE/PATH/TO/YOUR-APP --lang hu
-node /ABSOLUTE/PATH/TO/react-lens/dist/cli.js /ABSOLUTE/PATH/TO/YOUR-APP --ci --min-severity warning
-node /ABSOLUTE/PATH/TO/react-lens/dist/cli.js /ABSOLUTE/PATH/TO/YOUR-APP --format sarif > react-lens.sarif
+pnpm dlx react-lens . --ci --min-severity warning
 ```
 
-Fixture-based integration tests live under:
+Create a SARIF report:
 
-- `tests/fixtures/rules/*`
-- `tests/fixtures/integration/*`
-- `tests/integration/fixtures.test.ts`
+```bash
+pnpm dlx react-lens . --format sarif > react-lens.sarif
+```
 
-Repository sample policy:
+## Example output
 
-- `tests/fixtures/` is the single source of truth for sample code snippets (positive/negative/edge cases).
-- We do not keep a separate `src/examples` demo corpus to avoid duplicate, drifting examples.
-- If you add a new rule, add fixtures instead of ad-hoc example files.
+```txt
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ React Lens Report                                                                 ┃
+┃ Findings: 2  |  ERROR: 0  WARNING: 2  SUGGESTION: 0  INFO: 0                      ┃
+┃ Files scanned: 125                                                                ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
-## Config (optional)
+┌────────────────────────────────────────────────────────────────────────────────────
+│ #1   WARNING   ● high  ─  Array index used as React key
+│ src/components/UserList.tsx:21:9
+│
+│ Array index used as React key
+│ Index keys cause incorrect reconciliation when items are reordered, inserted, or removed.
+│
+│ Current code:
+│    19 │ {items.map((item, index) => (
+│    20 │   <div
+│ >  21 │     key={index}
+│    22 │   >
+│
+│ Suggested fix:
+│ key={item.id}
+└────────────────────────────────────────────────────────────────────────────────────
+```
 
-Create `react-lens.config.json`:
+## Main features
+
+- Static React code analysis
+- TypeScript and JavaScript support
+- Readable terminal report
+- English and Hungarian output
+- JSON and SARIF output
+- Optional interactive terminal UI
+- Configurable rule severity
+- Integration with recommended `eslint-plugin-react-hooks` rules
+- CI-friendly exit codes
+- Fixture-based test coverage
+
+## What does it check?
+
+React Lens currently looks for patterns such as:
+
+| Rule | Default level | Meaning |
+| --- | --- | --- |
+| `effect-derived-state` | `warning` | State that could probably be calculated during render is synchronized through `useEffect` + `setState` |
+| `effect-event-flag` | `warning` | Boolean flag state exists only to trigger effect-based event logic |
+| `async-effect-race` | `warning` | Async effect may write an old response over newer state |
+| `missing-effect-cleanup` | `error` | Listener, timer or subscription without cleanup |
+| `unstable-context-value` | `warning` | Unstable `Context.Provider value` reference |
+| `inline-prop-to-memo` | `warning` | Inline object, array or function passed to a memoized child component |
+| `useless-memo` | `info` | Trivial value wrapped in `useMemo` |
+| `unstable-memo-deps` | `warning` | Unstable value in a memo dependency array |
+| `key-index-risk` | `warning` | Array index used as a React `key` |
+| `rsc-client-boundary` | `warning` | Client-only hook in a likely server boundary |
+| `server-function-contract` | `error` | Possible Server Function contract violation |
+| `server-function-untrusted-input` | `warning` | Server Function input may be mutated without validation or authorization |
+| `serializable-props-across-boundary` | `warning` | Non-serializable prop near a server/client boundary |
+| `hydration-root-mismatch-risk` | `warning` | Possible hydration or `createRoot` usage risk |
+| `dangerous-html-xss-risk` | `error` | Risky `dangerouslySetInnerHTML` usage |
+| `client-env-secrets-risk` | `error` | Secret env variable may be used in client-side code |
+
+Recommended official React Hooks lint rules can also be enabled. They appear with the `react-hooks/...` prefix.
+
+## Configuration
+
+You can create a `react-lens.config.json` file in the project root:
 
 ```json
 {
@@ -108,71 +130,150 @@ Create `react-lens.config.json`:
   "rules": {
     "effect-derived-state": "warning",
     "missing-effect-cleanup": "error",
-    "server-function-contract": "error",
+    "key-index-risk": "warning",
     "dangerous-html-xss-risk": "error",
     "client-env-secrets-risk": "error"
   }
 }
 ```
 
-`reactCompiler`:
+Rule levels:
 
-- `"auto"`: compiler-aware exceptions are enabled when code uses directives like `"use memo"`.
-- `"on"`: same behavior as auto, but explicit.
-- `"off"`: disables compiler-aware exceptions (stricter findings).
+```txt
+off
+info
+suggestion
+warning
+error
+```
 
-`officialHooksLint`:
+## CLI options
 
-- `"recommended"`: runs official `eslint-plugin-react-hooks` recommended checks and merges them into React Lens findings.
-- `"off"`: disables official hooks lint integration.
+```bash
+react-lens [target] [options]
+```
 
-`rolloutMode`:
+| Option | Description |
+| --- | --- |
+| `--format <format>` | Output format: `pretty`, `json` or `sarif` |
+| `--lang <lang>` | Language: `en` or `hu` |
+| `--min-severity <level>` | Minimum level: `info`, `suggestion`, `warning`, `error` |
+| `--interactive` | Interactive terminal report |
+| `--theme <theme>` | Interactive theme: `noir`, `paper`, `amber` |
+| `--ci` | Exit with an error code when warning or error findings exist |
+| `--max-runtime-ms <ms>` | Maximum allowed runtime |
+| `--perf-baseline-file <path>` | Runtime baseline file |
+| `--max-runtime-growth-percent <percent>` | Allowed slowdown compared to the baseline |
 
-- `"gradual"`: official lint errors are downgraded to warnings during adoption.
-- `"strict"`: official lint severities are preserved (`error` / `warning`).
-- `"report-only"`: official lint findings are informational.
+## Interactive mode
 
-`reactEnvironment`:
+```bash
+react-lens . --interactive
+```
 
-- `"auto"`: RSC checks run only on likely server-evaluated modules (heuristic).
-- `"client"`: disables RSC/server-boundary checks.
-- `"rsc"`: forces RSC/server-boundary checks.
+Hungarian interactive output:
 
-File discovery behavior:
+```bash
+react-lens . --interactive --lang hu
+```
 
-- Primary scan uses your configured `include` patterns.
-- If those patterns match nothing in the target folder, React Lens falls back to `**/*.{ts,tsx,js,jsx}` (respecting `ignore`) so non-`src/` project layouts still work out of the box.
+Useful keys:
 
-Performance guard:
+| Key | Action |
+| --- | --- |
+| `↑` / `↓` | Select finding |
+| `tab` | Switch filter |
+| `t` | Change theme |
+| `o` | Open file |
+| `c` | Copy suggested fix |
+| `q` | Quit |
 
-- `--max-runtime-ms`: hard runtime budget in milliseconds.
-- `--perf-baseline-file`: JSON file used as runtime baseline.
-- `--max-runtime-growth-percent`: max allowed growth versus baseline runtime.
-- `--update-perf-baseline`: rewrites baseline with current run metrics.
+## When is it useful?
 
-Interactive terminal UI:
+React Lens is useful when you want to:
 
-- Use `--interactive` with `--format pretty` (default format).
-- Theme switch: `--theme noir|paper|amber` (or press `t` inside TUI to cycle).
-- Keyboard: `↑/↓` select finding, `tab` switch filter, `t` switch theme, `o` open file, `c` copy fix, `q` quit.
-- The example fix is rendered in a separate full-width bottom box for better horizontal space.
+- run a quick React code quality check,
+- find suspicious patterns before a pull request,
+- add architecture or performance-related warnings to CI,
+- learn why a React pattern may be risky,
+- create SARIF reports for code scanning tools.
 
-## Known Limitations
+It is not meant for:
 
-- Several checks are heuristic by design and may report false positives/false negatives.
-- RSC-related checks are framework-agnostic and rely on static code signals.
-- The tool is static analysis only; it does not execute code paths.
+- replacing ESLint,
+- runtime performance profiling,
+- exact render measurement,
+- formal security auditing.
 
-## Support Matrix
+## Limitations
 
-- Node.js: `>=18.18.0`
-- Package manager: `pnpm` recommended (`npm` compatible)
-- Language: TypeScript / JavaScript React codebases (`.ts`, `.tsx`, `.js`, `.jsx`)
+React Lens is heuristic by design. This means it may produce:
 
-## Release Checklist
+- false positives,
+- false negatives,
+- framework-specific edge cases,
+- incomplete security conclusions.
 
-1. `pnpm install`
-2. `pnpm run check`
-3. `pnpm run scan`
-4. `pnpm run scan:ci`
-5. `pnpm run scan:sarif`
+It does not execute your code. It only inspects source files statically.
+
+Security-related findings should be treated as review signals, not as proven vulnerabilities.
+
+## Development
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Typecheck:
+
+```bash
+pnpm exec tsc --noEmit
+```
+
+Build:
+
+```bash
+pnpm run build
+```
+
+Run tests:
+
+```bash
+pnpm run test
+```
+
+Run all checks:
+
+```bash
+pnpm run check
+```
+
+Run React Lens on itself:
+
+```bash
+pnpm run build
+pnpm run scan
+pnpm run scan:hu
+```
+
+## Project structure
+
+```txt
+src/cli.ts          CLI entry point
+src/scanner/        file discovery and analysis pipeline
+src/rules/          React Lens rules
+src/config/         default settings and config schema
+src/formatters/     pretty, JSON, SARIF and interactive output
+src/i18n/           English and Hungarian messages
+src/docs/           documentation helper logic
+src/perf/           runtime budget checks
+tests/fixtures/     positive and negative examples
+tests/integration/  integration tests
+tests/rules/        targeted rule tests
+```
+
+## License
+
+[MIT](./LICENSE)
