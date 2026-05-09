@@ -8,15 +8,12 @@ function traverse(node: unknown, visit: (n: TSESTree.Node) => void): void {
   if (typeof maybeNode.type === "string") {
     visit(maybeNode as TSESTree.Node);
   }
-
   for (const value of Object.values(node as Record<string, unknown>)) {
     if (Array.isArray(value)) {
       for (const child of value) traverse(child, visit);
       continue;
     }
-    if (value && typeof value === "object") {
-      traverse(value, visit);
-    }
+    if (value && typeof value === "object") traverse(value, visit);
   }
 }
 
@@ -24,17 +21,13 @@ function isHookCall(
   node: TSESTree.CallExpression,
   hookName: "useState" | "useEffect",
 ): boolean {
-  if (node.callee.type === "Identifier") {
-    return node.callee.name === hookName;
-  }
-
+  if (node.callee.type === "Identifier") return node.callee.name === hookName;
   if (node.callee.type === "MemberExpression" && !node.callee.computed) {
     return (
       node.callee.property.type === "Identifier" &&
       node.callee.property.name === hookName
     );
   }
-
   return false;
 }
 
@@ -50,19 +43,14 @@ function getFunctionBodyRange(
 
 function collectStateSetters(ast: TSESTree.Program): Set<string> {
   const setters = new Set<string>();
-
   traverse(ast, (node) => {
     if (node.type !== "VariableDeclarator") return;
     if (node.id.type !== "ArrayPattern") return;
     if (!node.init || node.init.type !== "CallExpression") return;
     if (!isHookCall(node.init, "useState")) return;
-
     const setterNode = node.id.elements[1];
-    if (setterNode?.type === "Identifier") {
-      setters.add(setterNode.name);
-    }
+    if (setterNode?.type === "Identifier") setters.add(setterNode.name);
   });
-
   return setters;
 }
 
@@ -78,9 +66,8 @@ function findSetterCallsInEffectBody(
       (node.type === "FunctionDeclaration" ||
         node.type === "FunctionExpression" ||
         node.type === "ArrowFunctionExpression")
-    ) {
+    )
       return;
-    }
 
     if (
       node.type === "CallExpression" &&
@@ -91,10 +78,7 @@ function findSetterCallsInEffectBody(
       const updaterFnArg =
         firstArg?.type === "FunctionExpression" ||
         firstArg?.type === "ArrowFunctionExpression";
-
-      if (!updaterFnArg) {
-        calls.push(node);
-      }
+      if (!updaterFnArg) calls.push(node);
     }
 
     const nodeObject = node as unknown as Record<string, unknown>;
@@ -111,7 +95,6 @@ function findSetterCallsInEffectBody(
         }
         continue;
       }
-
       if (
         value &&
         typeof value === "object" &&
@@ -122,11 +105,42 @@ function findSetterCallsInEffectBody(
     }
   };
 
-  if (fn.body.type === "BlockStatement") {
-    visitNode(fn.body, true);
-  }
-
+  if (fn.body.type === "BlockStatement") visitNode(fn.body, true);
   return calls;
+}
+
+function hasEarlyReturnGuard(
+  fn: TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression,
+): boolean {
+  if (fn.body.type !== "BlockStatement") return false;
+  const firstStatement = fn.body.body[0];
+  if (!firstStatement) return false;
+  return (
+    firstStatement.type === "IfStatement" &&
+    firstStatement.consequent.type === "ReturnStatement"
+  );
+}
+
+function deriveVarName(setterName: string): string {
+  const withoutSet = setterName.replace(/^set/, "");
+  return withoutSet.charAt(0).toLowerCase() + withoutSet.slice(1);
+}
+
+function buildContextualExample(
+  original: string,
+  call: TSESTree.CallExpression,
+): string {
+  const setterName =
+    call.callee.type === "Identifier" ? call.callee.name : null;
+  const arg = call.arguments[0];
+  if (!setterName || !arg)
+    return "const fullName = `${firstName} ${lastName}`;";
+  const varName = deriveVarName(setterName);
+  const argSource = arg.range
+    ? original.slice(arg.range[0], arg.range[1])
+    : null;
+  if (!argSource) return `const ${varName} = /* derived value */;`;
+  return `const ${varName} = ${argSource};`;
 }
 
 function buildDerivedStateFinding(
@@ -135,6 +149,7 @@ function buildDerivedStateFinding(
   confidence: "high" | "medium",
 ): RuleResult {
   const index = node.range ? node.range[0] : 0;
+  const exampleFix = buildContextualExample(source, node);
   return buildFinding(source, index, {
     ruleId: "effect-derived-state",
     confidence,
@@ -147,7 +162,7 @@ function buildDerivedStateFinding(
       "Compute the value during render. Keep useMemo only for genuinely expensive calculations.",
     whenToIgnore:
       "Ignore when the Effect is intentionally syncing with an external system, not deriving UI state.",
-    exampleFix: "const fullName = `${firstName} ${lastName}`;",
+    exampleFix,
   });
 }
 
@@ -190,14 +205,22 @@ export const effectDerivedStateAstRule: Rule = {
       if (!bodyRange) return;
 
       const effectText = original.slice(bodyRange[0], bodyRange[1]);
+
       const hasAsyncSignals =
         callback.async || /\bawait\b|\.then\s*\(/.test(effectText);
       const hasExternalSignals =
-        /\b(fetch|addEventListener|removeEventListener|setInterval|setTimeout|subscribe|observe|postMessage|dispatchEvent)\b/.test(
+        /\b(fetch|addEventListener|removeEventListener|setInterval|setTimeout|subscribe|observe|postMessage|dispatchEvent|WebSocket|MutationObserver|IntersectionObserver|ResizeObserver)\b/.test(
           effectText,
         );
+      const hasNewInstantiation = /\bnew\s+[A-Z]\w+\s*\(/.test(effectText);
+      const hasOneTimeGuard = hasEarlyReturnGuard(callback);
 
-      if (hasAsyncSignals || hasExternalSignals) {
+      if (
+        hasAsyncSignals ||
+        hasExternalSignals ||
+        hasNewInstantiation ||
+        hasOneTimeGuard
+      ) {
         return;
       }
 
@@ -206,8 +229,21 @@ export const effectDerivedStateAstRule: Rule = {
         deps?.type === "ArrayExpression" && deps.elements.length > 0;
       const setterCalls = findSetterCallsInEffectBody(callback, setters);
 
-      if (setterCalls.length === 0) {
-        return;
+      if (setterCalls.length === 0) return;
+
+      if (deps?.type === "ArrayExpression") {
+        const depNames = new Set(
+          deps.elements
+            .filter(
+              (el): el is TSESTree.Identifier => el?.type === "Identifier",
+            )
+            .map((el) => el.name),
+        );
+        const allCallsAreMirrors = setterCalls.every((call) => {
+          const arg = call.arguments[0];
+          return arg?.type === "Identifier" && depNames.has(arg.name);
+        });
+        if (allCallsAreMirrors) return;
       }
 
       const confidence: "high" | "medium" =
