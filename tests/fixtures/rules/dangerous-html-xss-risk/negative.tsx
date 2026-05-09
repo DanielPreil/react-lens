@@ -1,3 +1,4 @@
+// @ts-expect-error – fixture only, dompurify not installed
 import DOMPurify from "dompurify";
 
 export function Safe({ html }: { html: string }) {
